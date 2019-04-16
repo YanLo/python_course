@@ -4,6 +4,11 @@ import tempfile
 import argparse
 
 storage_path = os.path.join(tempfile.gettempdir(), 'storage.data')
+
+file_exists = os.path.isfile('/tmp/storage.data')
+if not file_exists:
+    open(storage_path, 'w+')
+
 with open(storage_path, 'r') as storage_file:
     try:
         key_value_storage = json.load(storage_file)
