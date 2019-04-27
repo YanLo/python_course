@@ -1,5 +1,6 @@
 import csv
 import os
+import sys
 
 class CarBase:
     def __init__(self, car_type, brand, photo_file_name, carrying):
@@ -9,7 +10,8 @@ class CarBase:
         self.carrying = float(carrying)
 
     def get_photo_file_ext(self):
-        return os.path.splitext(self.photo_file_name)
+        _, ext =  os.path.splitext(self.photo_file_name)
+        return ext
 
 class Car(CarBase):
     def __init__(self, car_type, brand, photo_file_name, carrying, passenger_seats_count):
@@ -59,13 +61,16 @@ def get_car_list(csv_filename):
                     new_car = SpecMachine(car_type, brand, photo_file_name, carrying, extra)
                     car_list.append(new_car)
             except Exception as exception:
-                pass
                 #print("-----------------EXCEPTION_OCCURED:   ", exception)
+                pass
 
     return car_list
 
-#if __name__ == "__main__":
-#    car_list = get_car_list("cars.csv")
-#    for car in car_list:
-#        print(car.car_type, car.brand)
-
+if __name__ == "__main__":
+    try:
+        car_list = get_car_list(sys.argv[1])
+        for car in car_list:
+            print(car.car_type, car.brand)
+    except Exception as excep:
+        print("-------------EXCEPTION___:  ", excep)
+        print("usage: car_parser.py name_of_data_file")
