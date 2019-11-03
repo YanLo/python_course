@@ -13,35 +13,29 @@ class Client:
         self.timeout = timeout
 
     def put(self, key, value, timestamp=str(time.time())):
+        message = 'put {} {} {}\n'.format(key, value, timestamp)
         with socket.create_connection(self.host, self.port_num) as sock:
-            message = 'put {} {} {}\n'.format(key, value, timestamp)
-            sock.sendall(message)
-            answer = sock.recv(1024)
-            str_ans = answer.decode()
-            condition = (str_ans.split('\n'))[0]
+            #sock.settimeout(self.timeout)
+            sock.send(message.encode())
+            answer = sock.recv(1024).decode()
+            condition = (answer.split('\n'))[0]
             if(condition == 'error'):
                 raise ClientError
 
     def get(self, key):
+        request = 'get {}\n'.format(key)
         with socket.create_connection(self.host, self.port_num) as sock:
-            message = 'get {}\n'.format(key)
-            sock.sendall(message)
+            #sock.settimeout(self.timeout)
+            sock.sendall(request.encode())
 
-            all_data = []
-            while True:
-                data = sock.recv(1024)
-                all_data.append(data)
-                if not data:
-                    break
-
-            buffer = all_data.decode()
+            buffer = sock.recv(1024).decode()
             message = buffer.split('\n')
             condition = message[0]
             if(condition == 'error'):
                 raise ClientError
-            info_messages = message[1:-2]
+            tokens = message[1:-2]
             key_val_dict = {}
-            for item in info_messages:
+            for item in tokens:
                 splitted_item = item.split()
                 key = splitted_item[0]
                 value = float(splitted_item[1])
@@ -52,6 +46,6 @@ class Client:
                     key_val_dict[key].append((value, timestamp))
                 else:
                     key_val_dict[key] = [key_val_dict[key], (value, timestamp)]
-                key_val_dict[key] = sorted(key_val_dict[key], key=lambda x: x[0])
+                key_val_dict[key] = sorted(key_val_dict[key], key=lambda x: x[1])
 
             return key_val_dict
