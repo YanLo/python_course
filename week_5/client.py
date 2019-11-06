@@ -8,44 +8,52 @@ class ClientError(Exception):
 
 class Client:
     def __init__(self, host, port_num, timeout=None):
-        self.host = host
-        self.port_num = port_num
-        self.timeout = timeout
+        self.socket = socket.create_connection((host, port_num), timeout)
 
-    def put(self, key, value, timestamp=str(time.time())):
+    def send_and_recieve(self, request):
+        socket = self.socket
+        socket.sendall(request)
+        answer = socket.recv(1024).decode()
+        if(answer == 'error\nwrong command\n\n'):
+            raise ClientError
+        return answer
+
+    def put(self, key, value, timestamp=None):
+        if not timestamp:
+            timestamp = str(int(time.time()))
         message = 'put {} {} {}\n'.format(key, value, timestamp)
-        with socket.create_connection(self.host, self.port_num) as sock:
-            #sock.settimeout(self.timeout)
-            sock.send(message.encode())
-            answer = sock.recv(1024).decode()
-            condition = (answer.split('\n'))[0]
-            if(condition == 'error'):
-                raise ClientError
+        self.send_and_recieve(message)
 
     def get(self, key):
         request = 'get {}\n'.format(key)
-        with socket.create_connection(self.host, self.port_num) as sock:
-            #sock.settimeout(self.timeout)
-            sock.sendall(request.encode())
+        respond = self.send_and_recieve(request)
+        return self.parse_message(respond)
 
-            buffer = sock.recv(1024).decode()
-            message = buffer.split('\n')
-            condition = message[0]
-            if(condition == 'error'):
-                raise ClientError
-            tokens = message[1:-2]
-            key_val_dict = {}
-            for item in tokens:
-                splitted_item = item.split()
-                key = splitted_item[0]
-                value = float(splitted_item[1])
-                timestamp = int(splitted_item[2])
-                if key not in key_val_dict:
-                    key_val_dict[key] = (value, timestamp)
-                elif type(key_val_dict[key]) == list:
-                    key_val_dict[key].append((value, timestamp))
-                else:
-                    key_val_dict[key] = [key_val_dict[key], (value, timestamp)]
-                key_val_dict[key] = sorted(key_val_dict[key], key=lambda x: x[1])
+    @staticmethod
+    def parse_message(buff):
+        message = buff.split('\n')
+        tokens = message[1:-2]
+        key_val_dict = {}
+        for item in tokens:
+            splitted_item = item.split()
+            key = splitted_item[0]
+            value = float(splitted_item[1])
+            timestamp = int(splitted_item[2])
+            if key not in key_val_dict:
+                key_val_dict[key] = (value, timestamp)
+            elif type(key_val_dict[key]) == list:
+                key_val_dict[key].append((value, timestamp))
+            else:
+                key_val_dict[key] = [key_val_dict[key], (value, timestamp)]
 
-            return key_val_dict
+        #for key in key_val_dict:
+         #   key_val_dict[key] = sorted(key_val_dict[key], key=lambda x: x[1])
+
+        return key_val_dict
+
+    def close(self):
+        self.socket.close()
+
+if __name__ == "__main__":
+    message = 'ok\npalm.cpu 10.5 1501864247\neardrum.cpu 15.3 1501864259\n\n'
+    print(Client.parse_message(message))
