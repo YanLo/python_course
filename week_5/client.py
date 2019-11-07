@@ -8,22 +8,14 @@ class ClientError(Exception):
 
 class Client:
     def __init__(self, host, port_num, timeout=None):
-        self.host = host
-        self.port_num = port_num
-        self.timeout = timeout
-        self.socket = socket.create_connection((self.host, self.port_num), self.timeout)
+        self.socket = socket.create_connection((host, port_num), timeout)
 
     def send_and_recieve(self, request):
-        try:
-            socket = self.socket
-            socket.sendall(request)
-            answer = socket.recv(1024).decode()
-            if answer is 'error\nwrong command\n\n':
-                raise ClientError
-
-        except self.timeout:
+        socket = self.socket
+        socket.sendall(request.encode())
+        answer = socket.recv(4096).decode()
+        if answer == 'error\nwrong command\n\n':
             raise ClientError
-
         return answer
 
     def put(self, key, value, timestamp=None):
@@ -32,9 +24,6 @@ class Client:
         self.send_and_recieve(message)
 
     def get(self, key=None):
-        if key is None:
-            raise ClientError
-
         request = 'get {}\n'.format(key)
         respond = self.send_and_recieve(request)
         return self.parse_message(respond)
@@ -45,11 +34,8 @@ class Client:
         tokens = message[1:-2]
         key_val_list = []
         for item in tokens:
-            splitted_item = item.split()
-            key = splitted_item[0]
-            value = float(splitted_item[1])
-            timestamp = int(splitted_item[2])
-            key_val_list.append((key, value, timestamp))
+            key, value, timestamp = item.split()
+            key_val_list.append((key, float(value), int(timestamp)))
             sorted_list = sorted(key_val_list, key=lambda x: x[2])
 
         key_val_dict = dict()
@@ -62,5 +48,5 @@ class Client:
         self.socket.close()
 
 if __name__ == "__main__":
-    message = 'ok\npalm.cpu 10.5 1501864247\npalm.cpu 10.6 1600000000\neardrum.cpu 15.3 1501864259\n\n'
+    message = 'ok\npalm.cpu 10.5 1501864247\neardrum.cpu 15.3 1501864259\n\n'
     print(Client.parse_message(message))
