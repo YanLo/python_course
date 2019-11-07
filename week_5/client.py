@@ -8,23 +8,33 @@ class ClientError(Exception):
 
 class Client:
     def __init__(self, host, port_num, timeout=None):
-        self.socket = socket.create_connection((host, port_num), timeout)
+        self.host = host
+        self.port_num = port_num
+        self.timeout = timeout
+        self.socket = socket.create_connection((self.host, self.port_num), self.timeout)
 
     def send_and_recieve(self, request):
-        socket = self.socket
-        socket.sendall(request)
-        answer = socket.recv(1024).decode()
-        if answer == 'error\nwrong command\n\n':
+        try:
+            socket = self.socket
+            socket.sendall(request)
+            answer = socket.recv(1024).decode()
+            if answer is 'error\nwrong command\n\n':
+                raise ClientError
+
+        except self.timeout:
             raise ClientError
+
         return answer
 
     def put(self, key, value, timestamp=None):
-        if timestamp == None:
-            timestamp = str(int(time.time()))
+        timestamp = timestamp or int(time.time())
         message = 'put {} {} {}\n'.format(key, value, timestamp)
         self.send_and_recieve(message)
 
-    def get(self, key):
+    def get(self, key=None):
+        if key is None:
+            raise ClientError
+
         request = 'get {}\n'.format(key)
         respond = self.send_and_recieve(request)
         return self.parse_message(respond)
